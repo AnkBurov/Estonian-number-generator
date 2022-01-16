@@ -1,0 +1,232 @@
+<!doctype html>
+<html>
+<head>
+    <title>Estonian numbers generator</title>
+    <meta charset="utf-8">
+    <meta content="width=device-width,initial-scale=1,minimal-ui" name="viewport">
+    <link rel="stylesheet" href="css/material.css">
+    <link rel="stylesheet" href="css/vue-material.min.css">
+    <link rel="stylesheet" href="css/default.css">
+    <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+
+<div id="app">
+    <div class="page-container">
+        <md-app>
+            <md-app-toolbar class="md-primary">
+                <span class="md-title">Estonian numbers generator</span>
+            </md-app-toolbar>
+
+            <md-app-content style="background-color: #EEEEEE">
+                <md-card md-with-hover style="background-color: #f7f7f7">
+                    <md-card-content>
+                        <router-view></router-view>
+                    </md-card-content>
+                </md-card>
+            </md-app-content>
+        </md-app>
+    </div>
+</div>
+
+<template id="generation-template">
+    <div>
+        <span class="md-subheader">The website generates random numbers and shows them as estonian words. It can be used to practice the Estonian numeric system</span>
+
+
+		<div>
+			<div class="md-layout md-gutter">
+				<div class="md-layout-item">
+					<md-field>
+						<label>Start</label>
+						<md-input v-model="startBoundary"></md-input>
+					</md-field>
+				</div>
+
+				<div class="md-layout-item">
+					<md-field>
+						<label>End</label>
+						<md-input v-model="endBoundary"></md-input>
+					</md-field>
+				</div>
+
+				<div class="md-layout-item">
+					<md-field>
+						<label>Question</label>
+						<md-select v-model="question" name="question" id="question">
+							<md-option value="KuiPalju">Kui palju</md-option>
+							<md-option value="KuiVana">Kui vana</md-option>
+							<md-option value="Mitmes">Mitmes</md-option>
+							<md-option value="Mitmendal">Mitmendal</md-option>
+							<md-option value="Random">Random</md-option>
+						</md-select>
+					</md-field>
+				</div>
+
+
+			</div>
+
+			<div>
+				<md-button v-bind:class="generateButtonClass" @click="generate()" :md-ripple="false"
+						   :disabled="isGenerationDisabled()" v-b-tooltip.hover title="'+' hotkey">
+					{{generateButtonText}}
+				</md-button>
+				<md-button @click="clear()" :md-ripple="false" v-b-tooltip.hover title="'-' hotkey">
+					Clear
+				</md-button>
+			</div>
+		</div>
+
+		<div>
+			<md-table>
+				<md-table-row>
+					<md-table-head>Number</md-table-head>
+					<md-table-head>Question</md-table-head>
+					<md-table-head>Answer</md-table-head>
+				</md-table-row>
+
+				<md-table-row v-for="(item, index) in items" :key="index">
+					<md-table-cell md-numeric=true><span class="md-title">{{ item.number }}</span></md-table-cell>
+					<md-table-cell><span class="md-title">{{ item.question }}</span></md-table-cell>
+					<md-table-cell><span class="md-title">{{ item.answer }}</span></md-table-cell>
+				</md-table-row>
+			</md-table>
+    </div>
+</template>
+
+<script src="js/vue.min.js"></script>
+<script src="js/vue-router.min.js"></script>
+<script src="js/vue-material.min.js"></script>
+
+<script type="module">
+    import index from './index.js'
+
+    Vue.use(VueMaterial.default);
+
+    const GenerationTemplate = Vue.component('generation-template', {
+        template: '#generation-template',
+        data: function () {
+            return {
+                generateButtonStatus: 'GENERATE_QUESTION',
+				generateButtonClass: 'md-raised md-primary',
+                generateButtonText: 'Generate',
+
+				items: [],
+                questionMap: {
+                    "KuiPalju": 0,
+                    "KuiVana": 1,
+                    "Mitmes": 2,
+                    "Mitmendal": 3,
+                },
+                questionReversedMap: {
+                    0: "KuiPalju",
+                    1: "KuiVana",
+                    2: "Mitmes",
+                    3: "Mitmendal",
+                },
+
+                startBoundary: null,
+                endBoundary: null,
+                question: null,
+            }
+        },
+        mounted: function () {
+            var self = this;
+
+            // register hot keys
+            document.onkeydown = function (event) {
+                if (event.key === '+' && !self.isGenerationDisabled()) {
+                    self.generate();
+                }
+                if (event.key === 'Delete' || event.key === '-') {
+                    self.clear();
+                }
+            };
+        },
+        methods: {
+            isGenerationDisabled: function () {
+                var self = this;
+                var startBoundary = self.startBoundary;
+                var endBoundary = self.endBoundary;
+                return self.isEmpty(startBoundary) || !self.isNumeric(startBoundary)
+                    || self.isEmpty(endBoundary) || !self.isNumeric(endBoundary)
+                    || self.isEmpty(self.question)
+                    || startBoundary > endBoundary
+                    || startBoundary < -999999999999999999999999999999 || startBoundary > 999999999999999999999999999999
+                    || endBoundary < -999999999999999999999999999999 || endBoundary > 999999999999999999999999999999;
+            },
+			isNumeric: function (value) {
+                return /^-?\d+$/.test(value);
+            },
+            isEmpty: function (str) {
+                return (!str || str.length === 0)
+            },
+			getRndInteger: function (min, max) {
+                min = Math.ceil(min);
+                max = Math.floor(max);
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            },
+            generate: function () {
+                var self = this;
+
+                if (self.generateButtonStatus === 'GENERATE_QUESTION') {
+                    var randomNumber = BigInt(self.getRndInteger(self.startBoundary, self.endBoundary));
+
+                    var questionNumber;
+                    if (self.question === 'Random') {
+                        questionNumber = self.getRndInteger(0, 3);
+                    } else {
+                        questionNumber = self.questionMap[self.question];
+                    }
+                    var item = {
+                        number: randomNumber,
+                        question: self.questionReversedMap[questionNumber],
+                        answer: '',
+                    };
+                    self.items.unshift(item);
+
+                    self.generateButtonStatus = 'SHOW_ANSWER';
+                    self.generateButtonClass = 'md-raised md-accent';
+                    self.generateButtonText = "Show answer";
+                } else {
+                    var first_item = self.items[0];
+                    if (first_item != null) {
+                        var questionNumber = self.questionMap[first_item.question];
+                        index.to_letters(first_item.number, questionNumber)
+                            .then((result) => {
+                                first_item.answer = result;
+                                self.generateButtonStatus = 'GENERATE_QUESTION';
+                                self.generateButtonClass = 'md-raised md-primary';
+                                self.generateButtonText = "Generate";
+                            });
+                    }
+                }
+            },
+			clear: function () {
+                var self = this;
+
+                self.items = [];
+                self.generateButtonStatus = 'GENERATE_QUESTION';
+                self.generateButtonClass = 'md-raised md-primary';
+                self.generateButtonText = "Generate";
+            },
+        }
+    });
+
+    const routes = [
+        {path: '/generation', component: GenerationTemplate},
+        {path: '/', redirect: '/generation'}
+    ];
+
+    const router = new VueRouter({
+        routes
+    });
+
+    new Vue({
+        name: "Normal",
+        router
+    }).$mount("#app");
+</script>
+
+</body>
+</html>
