@@ -4,7 +4,6 @@
   "files": [
     "estonian_numbers_generator_bg.wasm",
     "estonian_numbers_generator.js",
-    "estonian_numbers_generator_bg.js",
     "estonian_numbers_generator.d.ts"
   ],
   "module": "estonian_numbers_generator.js",
